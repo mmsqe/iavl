@@ -660,6 +660,19 @@ func (ndb *nodeDB) orphans() [][]byte {
 	return orphans
 }
 
+func (ndb *nodeDB) orphanskv() (int, int, int) {
+
+	kSize := 0
+	vSize := 0
+	c := 0
+	ndb.traverseOrphans(func(k, v []byte) {
+		kSize += len(k)
+		vSize += len(v)
+		c++
+	})
+	return c, kSize, vSize
+}
+
 func (ndb *nodeDB) roots() map[int64][]byte {
 	roots, _ := ndb.getRoots()
 	return roots
@@ -727,4 +740,18 @@ func (ndb *nodeDB) String() string {
 		index++
 	})
 	return "-" + "\n" + str + "-"
+}
+
+func (ndb *nodeDB) traverseAll() error {
+	c := 0
+	ks := 0
+	vs := 0
+	ndb.traversePrefix([]byte{}, func(key, value []byte) {
+		c++
+		ks += len(key)
+		vs += len(value)
+	})
+
+	fmt.Printf("%d keys, %d ks, %d vs\n", c, ks, vs)
+	return nil
 }
