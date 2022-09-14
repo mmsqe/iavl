@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/cosmos/iavl/internal/encoding"
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/libs/rand"
 	db "github.com/tendermint/tm-db"
 )
 
@@ -31,6 +33,44 @@ func setupMutableTree(t *testing.T) *MutableTree {
 	tree, err := NewMutableTree(memDB, 0)
 	require.NoError(t, err)
 	return tree
+}
+
+func TestIterateConcurrency(t *testing.T) {
+	tree := setupMutableTree(t)
+	wg := new(sync.WaitGroup)
+	for i := 0; i < 100; i++ {
+		for j := 0; j < 1000; j++ {
+			wg.Add(1)
+			go func(i, j int) {
+				defer wg.Done()
+				tree.Set([]byte(fmt.Sprintf("%d%d", i, j)), rand.Bytes(1))
+			}(i, j)
+		}
+		tree.Iterate(func(key []byte, value []byte) bool {
+			return false
+		})
+	}
+	wg.Wait()
+}
+
+// TestConcurrency throws "fatal error: concurrent map iteration and map write" and
+// also sometimes "fatal error: concurrent map writes"
+func TestIteratorConcurrency(t *testing.T) {
+	tree := setupMutableTree(t)
+	wg := new(sync.WaitGroup)
+	for i := 0; i < 100; i++ {
+		for j := 0; j < 1000; j++ {
+			wg.Add(1)
+			go func(i, j int) {
+				defer wg.Done()
+				tree.Set([]byte(fmt.Sprintf("%d%d", i, j)), rand.Bytes(1))
+			}(i, j)
+		}
+		itr, _ := tree.Iterator(nil, nil, true)
+		for ; itr.Valid(); itr.Next() {
+		}
+	}
+	wg.Wait()
 }
 
 func TestDelete(t *testing.T) {
