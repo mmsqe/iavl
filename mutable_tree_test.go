@@ -42,9 +42,6 @@ func setupMutableTree(t *testing.T, skipFastStorageUpgrade bool) *MutableTree {
 
 // TestIterateConcurrency throws "fatal error: concurrent map writes" when fast node is enabled
 func TestIterateConcurrency(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
 	tree := setupMutableTree(t, true)
 	wg := new(sync.WaitGroup)
 	for i := 0; i < 100; i++ {
@@ -65,9 +62,6 @@ func TestIterateConcurrency(t *testing.T) {
 // TestConcurrency throws "fatal error: concurrent map iteration and map write" and
 // also sometimes "fatal error: concurrent map writes" when fast node is enabled
 func TestIteratorConcurrency(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
 	tree := setupMutableTree(t, true)
 	tree.LoadVersion(0)
 	// So much slower
@@ -89,9 +83,6 @@ func TestIteratorConcurrency(t *testing.T) {
 
 // TestNewIteratorConcurrency throws "fatal error: concurrent map writes" when fast node is enabled
 func TestNewIteratorConcurrency(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
 	tree := setupMutableTree(t, true)
 	for i := 0; i < 100; i++ {
 		wg := new(sync.WaitGroup)
