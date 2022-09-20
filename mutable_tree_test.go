@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/cosmos/iavl/fastnode"
@@ -26,8 +27,9 @@ var (
 	tKey1 = []byte("k1")
 	tVal1 = []byte("v1")
 
-	tKey2 = []byte("k2")
-	tVal2 = []byte("v2")
+	tKey2       = []byte("k2")
+	tVal2       = []byte("v2")
+	maxIterator = 100 // 100000
 )
 
 func setupMutableTree(t *testing.T, skipFastStorageUpgrade bool) *MutableTree {
@@ -35,6 +37,7 @@ func setupMutableTree(t *testing.T, skipFastStorageUpgrade bool) *MutableTree {
 	tree, err := NewMutableTree(memDB, 0, skipFastStorageUpgrade)
 	require.NoError(t, err)
 	return tree
+
 }
 
 // TestIterateConcurrency throws "fatal error: concurrent map writes" when fast node is enabled
@@ -43,17 +46,20 @@ func TestIterateConcurrency(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 	tree := setupMutableTree(t, true)
-
+	wg := new(sync.WaitGroup)
 	for i := 0; i < 100; i++ {
-		go func(i int) {
-			for j := 0; j < 100000; j++ {
+		for j := 0; j < maxIterator; j++ {
+			wg.Add(1)
+			go func(i, j int) {
+				defer wg.Done()
 				tree.Set([]byte(fmt.Sprintf("%d%d", i, j)), rand.Bytes(1))
-			}
-		}(i)
+			}(i, j)
+		}
 		tree.Iterate(func(key []byte, value []byte) bool {
 			return false
 		})
 	}
+	wg.Wait()
 }
 
 // TestConcurrency throws "fatal error: concurrent map iteration and map write" and
@@ -63,19 +69,22 @@ func TestIteratorConcurrency(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 	tree := setupMutableTree(t, true)
-
 	tree.LoadVersion(0)
 	// So much slower
+	wg := new(sync.WaitGroup)
 	for i := 0; i < 100; i++ {
-		go func(i int) {
-			for j := 0; j < 100000; j++ {
+		for j := 0; j < maxIterator; j++ {
+			wg.Add(1)
+			go func(i, j int) {
+				defer wg.Done()
 				tree.Set([]byte(fmt.Sprintf("%d%d", i, j)), rand.Bytes(1))
-			}
-		}(i)
+			}(i, j)
+		}
 		itr, _ := tree.Iterator(nil, nil, true)
 		for ; itr.Valid(); itr.Next() {
 		}
 	}
+	wg.Wait()
 }
 
 // TestNewIteratorConcurrency throws "fatal error: concurrent map writes" when fast node is enabled
@@ -85,14 +94,18 @@ func TestNewIteratorConcurrency(t *testing.T) {
 	}
 	tree := setupMutableTree(t, true)
 	for i := 0; i < 100; i++ {
-		go func(i int) {
-			for j := 0; j < 100000; j++ {
-				tree.Set([]byte(fmt.Sprintf("%d%d", i, j)), rand.Bytes(1))
-			}
-		}(i)
+		wg := new(sync.WaitGroup)
 		it := NewIterator(nil, nil, true, tree.ImmutableTree)
+		for j := 0; j < maxIterator; j++ {
+			wg.Add(1)
+			go func(i, j int) {
+				defer wg.Done()
+				tree.Set([]byte(fmt.Sprintf("%d%d", i, j)), rand.Bytes(1))
+			}(i, j)
+		}
 		for ; it.Valid(); it.Next() {
 		}
+		wg.Wait()
 	}
 }
 

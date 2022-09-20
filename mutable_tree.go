@@ -180,6 +180,8 @@ func (tree *MutableTree) Import(version int64) (*Importer, error) {
 // Iterate iterates over all keys of the tree. The keys and values must not be modified,
 // since they may point to data stored within IAVL. Returns true if stopped by callnack, false otherwise
 func (tree *MutableTree) Iterate(fn func(key []byte, value []byte) bool) (stopped bool, err error) {
+	tree.mtx.Lock()
+	defer tree.mtx.Unlock()
 	if tree.root == nil {
 		return false, nil
 	}
@@ -209,6 +211,8 @@ func (tree *MutableTree) Iterate(fn func(key []byte, value []byte) bool) (stoppe
 // Iterator returns an iterator over the mutable tree.
 // CONTRACT: no updates are made to the tree while an iterator is active.
 func (tree *MutableTree) Iterator(start, end []byte, ascending bool) (dbm.Iterator, error) {
+	tree.mtx.Lock()
+	defer tree.mtx.Unlock()
 	if !tree.skipFastStorageUpgrade {
 		isFastCacheEnabled, err := tree.IsFastCacheEnabled()
 		if err != nil {
@@ -228,6 +232,8 @@ func (tree *MutableTree) set(key []byte, value []byte) (orphans []*Node, updated
 		return nil, updated, fmt.Errorf("attempt to store nil value at key '%s'", key)
 	}
 
+	tree.mtx.Lock()
+	defer tree.mtx.Unlock()
 	if tree.ImmutableTree.root == nil {
 		if !tree.skipFastStorageUpgrade {
 			tree.addUnsavedAddition(key, fastnode.NewNode(key, value, tree.version+1))
