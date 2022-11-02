@@ -15,10 +15,10 @@ all: lint test install
 install:
 ifeq ($(COLORS_ON),)
 	go install ./cmd/iaviewer
-	go install ./cmd/iavlserver
+	# go install ./cmd/iavlserver
 else
 	go install $(CMDFLAGS) ./cmd/iaviewer
-	go install $(CMDFLAGS) ./cmd/iavlserver
+	# go install $(CMDFLAGS) ./cmd/iavlserver
 endif
 .PHONY: install
 

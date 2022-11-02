@@ -61,7 +61,7 @@ func main() {
 
 	switch args[0] {
 	case "data":
-		PrintKeys(tree)
+		// PrintKeys(tree)
 		fmt.Printf("Hash: %X\n", tree.Hash())
 		fmt.Printf("Size: %X\n", tree.Size())
 	case "shape":
@@ -149,9 +149,9 @@ func ReadTree(dir string, version int, prefix []byte) (*iavl.MutableTree, dbm.DB
 		return nil, nil, err
 	}
 
-	fmt.Printf("iterating over tree...\n")
-	tree.AllKVSize()
-	fmt.Printf("iterating over tree...done\n")
+	// fmt.Printf("iterating over tree...\n")
+	// tree.AllKVSize()
+	// fmt.Printf("iterating over tree...done\n")
 
 	ver, err := tree.LoadVersion(int64(version))
 	// if err != nil {
