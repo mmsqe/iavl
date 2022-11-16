@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- [#620](https://github.com/cosmos/iavl/pull/620) Add fast mode to rollback chain state in quick and dirty way, may leave some orphan nodes in db, not a big deal.
+
 ## 0.19.4 (October 28, 2022)
 
 - [#599](https://github.com/cosmos/iavl/pull/599) Populate ImmutableTree creation in copy function with missing field
