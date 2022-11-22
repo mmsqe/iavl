@@ -419,7 +419,7 @@ func (ndb *nodeDB) DeleteVersion(version int64, checkLatestVersion bool) error {
 }
 
 // DeleteVersionsFrom permanently deletes all tree versions from the given version upwards.
-func (ndb *nodeDB) DeleteVersionsFrom(version int64, fastMode bool) error {
+func (ndb *nodeDB) DeleteVersionsFrom(version int64, offlineRollback bool) error {
 	latest, err := ndb.getLatestVersion()
 	if err != nil {
 		return err
@@ -443,7 +443,7 @@ func (ndb *nodeDB) DeleteVersionsFrom(version int64, fastMode bool) error {
 
 	// First, delete all active nodes in the current (latest) version whose node version is after
 	// the given version.
-	if !fastMode {
+	if !offlineRollback {
 		err = ndb.deleteNodesFrom(version, root)
 		if err != nil {
 			return err
@@ -507,10 +507,10 @@ func (ndb *nodeDB) DeleteVersionsFrom(version int64, fastMode bool) error {
 	}
 
 	// Delete fast node entries
-	// Delete step will be skipped with enable fastMode
+	// Delete step will be skipped with enable offlineRollback
 	// with the assumption that the rollback happens offline
 	// since fast nodes will be reinforced when next start up
-	if !fastMode {
+	if !offlineRollback {
 		err = ndb.traverseFastNodes(func(keyWithPrefix, v []byte) error {
 			key := keyWithPrefix[1:]
 			fastNode, err := DeserializeFastNode(key, v)

@@ -617,10 +617,10 @@ func (tree *MutableTree) LoadVersionForOverwriting(targetVersion int64) (int64, 
 	return tree.LoadVersionForOverwritingWithMode(targetVersion, false)
 }
 
-func (tree *MutableTree) LoadVersionForOverwritingWithMode(targetVersion int64, fastMode bool) (int64, error) {
+func (tree *MutableTree) LoadVersionForOverwritingWithMode(targetVersion int64, offlineRollback bool) (int64, error) {
 	var latestVersion int64
 	var err error
-	if !fastMode {
+	if !offlineRollback {
 		latestVersion, err = tree.LoadVersion(targetVersion)
 	} else {
 		latestVersion, err = tree.LazyLoadVersion(targetVersion)
@@ -629,11 +629,11 @@ func (tree *MutableTree) LoadVersionForOverwritingWithMode(targetVersion int64, 
 		return latestVersion, err
 	}
 
-	if err = tree.ndb.DeleteVersionsFrom(targetVersion+1, fastMode); err != nil {
+	if err = tree.ndb.DeleteVersionsFrom(targetVersion+1, offlineRollback); err != nil {
 		return latestVersion, err
 	}
 
-	if !tree.skipFastStorageUpgrade {
+	if !tree.skipFastStorageUpgrade && !offlineRollback {
 		if err := tree.enableFastStorageAndCommitLocked(); err != nil {
 			return latestVersion, err
 		}

@@ -299,9 +299,9 @@ func TestDeleteVersion(t *testing.T) {
 
 	var version int64 = 100
 	testCases := []struct {
-		name     string
-		v        int64
-		fastMode bool
+		name            string
+		v               int64
+		offlineRollback bool
 	}{
 		{
 			"delete from version without fast mode",
@@ -336,7 +336,7 @@ func TestDeleteVersion(t *testing.T) {
 		key := ndb.rootKey(version)
 		err = ndb.db.Set(key, hash)
 		require.NoError(t, err)
-		err = ndb.DeleteVersionsFrom(tc.v, tc.fastMode)
+		err = ndb.DeleteVersionsFrom(tc.v, tc.offlineRollback)
 		require.NoError(t, err)
 		err = ndb.Commit()
 		require.NoError(t, err)
@@ -344,7 +344,7 @@ func TestDeleteVersion(t *testing.T) {
 		require.NoError(t, err)
 		leftBz, err := ndb.db.Get(ndb.nodeKey(leftNode.hash))
 		require.NoError(t, err)
-		if !tc.fastMode {
+		if !tc.offlineRollback {
 			if tc.v <= version {
 				require.Empty(t, bz)
 			}
