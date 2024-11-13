@@ -18,6 +18,8 @@ var (
 
 	// ErrKeyDoesNotExist is returned if a key does not exist.
 	ErrKeyDoesNotExist = errors.New("key does not exist")
+
+	ErrKeyValueMissingForKey = errors.New("Value missing for key")
 )
 
 type Option func(*Options)

@@ -149,6 +149,11 @@ func (ndb *nodeDB) GetNode(nk []byte) (*Node, error) {
 
 	// Doesn't exist, load.
 	isLegcyNode := len(nk) == hashSize
+	// stack := string(debug.Stack())
+	// if strings.Contains(stack, "deleteVersionsTo") {
+	// 	fmt.Println("mm-GetNode-isLegcyNode", isLegcyNode, len(nk), stack)
+	// 	isLegcyNode = true
+	// }
 	var nodeKey []byte
 	if isLegcyNode {
 		nodeKey = ndb.legacyNodeKey(nk)
@@ -160,7 +165,7 @@ func (ndb *nodeDB) GetNode(nk []byte) (*Node, error) {
 		return nil, fmt.Errorf("can't get node %v: %v", nk, err)
 	}
 	if buf == nil {
-		return nil, fmt.Errorf("Value missing for key %v corresponding to nodeKey %x", nk, nodeKey)
+		return nil, fmt.Errorf("%w %v corresponding to nodeKey %x", ErrKeyValueMissingForKey, nk, nodeKey)
 	}
 
 	var node *Node
@@ -450,6 +455,9 @@ func (ndb *nodeDB) deleteVersion(version int64) error {
 	if bytes.Equal(literalRootKey, nextRootKey) {
 		root, err := ndb.GetNode(nextRootKey)
 		if err != nil {
+			if strings.Index(err.Error(), ErrKeyValueMissingForKey.Error()) == 0 {
+				err = nil
+			}
 			return err
 		}
 		// ensure that the given version is not included in the root search
@@ -471,6 +479,9 @@ func (ndb *nodeDB) deleteVersion(version int64) error {
 func (ndb *nodeDB) deleteLegacyNodes(version int64, nk []byte) error {
 	node, err := ndb.GetNode(nk)
 	if err != nil {
+		if strings.Index(err.Error(), ErrKeyValueMissingForKey.Error()) == 0 {
+			err = nil
+		}
 		return err
 	}
 	if node.nodeKey.version < version {
