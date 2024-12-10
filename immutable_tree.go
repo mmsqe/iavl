@@ -2,6 +2,7 @@ package iavl
 
 import (
 	"fmt"
+	"runtime/debug"
 	"strings"
 
 	corestore "cosmossdk.io/core/store"
@@ -247,6 +248,9 @@ func (t *ImmutableTree) Iterate(fn func(key []byte, value []byte) bool) (bool, e
 
 // Iterator returns an iterator over the immutable tree.
 func (t *ImmutableTree) Iterator(start, end []byte, ascending bool) (corestore.Iterator, error) {
+	if t == nil {
+		fmt.Println("mm-Iterator1", string(debug.Stack()))
+	}
 	if !t.skipFastStorageUpgrade {
 		isFastCacheEnabled, err := t.IsFastCacheEnabled()
 		if err != nil {

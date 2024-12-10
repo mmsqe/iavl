@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"sort"
 	"sync"
 
@@ -250,7 +251,9 @@ func (tree *MutableTree) Iterator(start, end []byte, ascending bool) (corestore.
 			return NewUnsavedFastIterator(start, end, ascending, tree.ndb, tree.unsavedFastNodeAdditions, tree.unsavedFastNodeRemovals), nil
 		}
 	}
-
+	if tree.ImmutableTree == nil {
+		fmt.Println("mm-Iterator0", string(debug.Stack()))
+	}
 	return tree.ImmutableTree.Iterator(start, end, ascending)
 }
 
