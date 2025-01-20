@@ -1,6 +1,8 @@
 module github.com/cosmos/iavl
 
-go 1.21
+go 1.23
+
+toolchain go1.23.4
 
 require (
 	cosmossdk.io/core v0.12.1-0.20240725072823-6a2d039e1212
@@ -35,3 +37,5 @@ retract (
 	[v0.21.0, v0.21.2]
 	v0.18.0
 )
+
+replace cosmossdk.io/core => ../cosmos-sdk/core

@@ -217,7 +217,7 @@ func (iter *Iterator) Key() []byte {
 }
 
 // Value implements dbm.Iterator
-func (iter *Iterator) Value() []byte {
+func (iter *Iterator) Value() any {
 	return iter.value
 }
 

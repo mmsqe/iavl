@@ -151,7 +151,7 @@ func iterate(b *testing.B, itr corestore.Iterator, expectedSize int) {
 	keyValuePairs := make([][][]byte, 0, expectedSize)
 	for i := 0; i < expectedSize && itr.Valid(); i++ {
 		itr.Next()
-		keyValuePairs = append(keyValuePairs, [][]byte{itr.Key(), itr.Value()})
+		keyValuePairs = append(keyValuePairs, [][]byte{itr.Key(), itr.Value().([]byte)})
 	}
 	b.StopTimer()
 	if g, w := len(keyValuePairs), expectedSize; g != w {

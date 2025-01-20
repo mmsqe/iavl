@@ -18,7 +18,7 @@ const (
 // item is a btree.Item with byte slices as keys and values
 type item struct {
 	key   []byte
-	value []byte
+	value any
 }
 
 // Less implements btree.Item.
@@ -34,7 +34,7 @@ func newKey(key []byte) item {
 }
 
 // newPair creates a new pair item.
-func newPair(key, value []byte) item {
+func newPair(key []byte, value any) item {
 	return item{key: key, value: value}
 }
 
@@ -60,7 +60,7 @@ func NewMemDB() *MemDB {
 }
 
 // Get implements DB.
-func (db *MemDB) Get(key []byte) ([]byte, error) {
+func (db *MemDB) Get(key []byte) (any, error) {
 	if len(key) == 0 {
 		return nil, errKeyEmpty
 	}
@@ -86,7 +86,7 @@ func (db *MemDB) Has(key []byte) (bool, error) {
 }
 
 // Set implements DB.
-func (db *MemDB) Set(key []byte, value []byte) error {
+func (db *MemDB) Set(key []byte, value any) error {
 	if len(key) == 0 {
 		return errKeyEmpty
 	}
@@ -101,7 +101,7 @@ func (db *MemDB) Set(key []byte, value []byte) error {
 }
 
 // set sets a value without locking the mutex.
-func (db *MemDB) set(key []byte, value []byte) {
+func (db *MemDB) set(key []byte, value any) {
 	db.btree.ReplaceOrInsert(newPair(key, value))
 }
 
@@ -347,7 +347,7 @@ func (i *memDBIterator) Key() []byte {
 }
 
 // Value implements Iterator.
-func (i *memDBIterator) Value() []byte {
+func (i *memDBIterator) Value() any {
 	i.assertIsValid()
 	return i.item.value
 }

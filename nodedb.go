@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -116,7 +117,7 @@ func newNodeDB(db dbm.DB, cacheSize int, opts Options, lg Logger) *nodeDB {
 		nodeCache:           cache.New(cacheSize),
 		fastNodeCache:       cache.New(fastNodeCacheSize),
 		versionReaders:      make(map[int64]uint32, 8),
-		storageVersion:      string(storeVersion),
+		storageVersion:      string(storeVersion.([]byte)),
 		chCommitting:        make(chan struct{}, 1),
 	}
 
@@ -156,11 +157,11 @@ func (ndb *nodeDB) GetNode(nk []byte) (*Node, error) {
 	} else {
 		nodeKey = ndb.nodeKey(nk)
 	}
-	buf, err := ndb.db.Get(nodeKey)
+	val, err := ndb.db.Get(nodeKey)
 	if err != nil {
 		return nil, fmt.Errorf("can't get node %v: %v", nk, err)
 	}
-	if buf == nil && !isLegcyNode {
+	if (val == nil || reflect.ValueOf(val).IsNil()) && !isLegcyNode {
 		// if the node is reformatted by pruning, check against (version, 0)
 		nKey := GetNodeKey(nk)
 		if nKey.nonce == 1 {
@@ -168,16 +169,16 @@ func (ndb *nodeDB) GetNode(nk []byte) (*Node, error) {
 				version: nKey.version,
 				nonce:   0,
 			}).GetKey())
-			buf, err = ndb.db.Get(nodeKey)
+			val, err = ndb.db.Get(nodeKey)
 			if err != nil {
 				return nil, fmt.Errorf("can't get the reformatted node %v: %v", nk, err)
 			}
 		}
 	}
-	if buf == nil {
+	if val == nil || reflect.ValueOf(val).IsNil() {
 		return nil, fmt.Errorf("Value missing for key %v corresponding to nodeKey %x", nk, nodeKey)
 	}
-
+	buf := val.([]byte)
 	var node *Node
 	if isLegcyNode {
 		node, err = MakeLegacyNode(nk, buf)
@@ -216,14 +217,14 @@ func (ndb *nodeDB) GetFastNode(key []byte) (*fastnode.Node, error) {
 	ndb.opts.Stat.IncFastCacheMissCnt()
 
 	// Doesn't exist, load.
-	buf, err := ndb.db.Get(ndb.fastNodeKey(key))
+	val, err := ndb.db.Get(ndb.fastNodeKey(key))
 	if err != nil {
 		return nil, fmt.Errorf("can't get FastNode %X: %w", key, err)
 	}
-	if buf == nil {
+	if val == nil || reflect.ValueOf(val).IsNil() {
 		return nil, nil
 	}
-
+	buf := val.([]byte)
 	fastNode, err := fastnode.DeserializeNode(key, buf)
 	if err != nil {
 		return nil, fmt.Errorf("error reading FastNode. bytes: %x, error: %w", buf, err)
@@ -900,24 +901,26 @@ func (ndb *nodeDB) hasLegacyVersion(version int64) (bool, error) {
 // GetRoot gets the nodeKey of the root for the specific version.
 func (ndb *nodeDB) GetRoot(version int64) ([]byte, error) {
 	rootKey := GetRootKey(version)
-	val, err := ndb.db.Get(nodeKeyFormat.Key(rootKey))
+	valAny, err := ndb.db.Get(nodeKeyFormat.Key(rootKey))
 	if err != nil {
 		return nil, err
 	}
-	if val == nil {
+	if valAny == nil || reflect.ValueOf(valAny).IsNil() {
 		// try the legacy root key
-		val, err := ndb.db.Get(ndb.legacyRootKey(version))
+		valAny, err := ndb.db.Get(ndb.legacyRootKey(version))
 		if err != nil {
 			return nil, err
 		}
-		if val == nil {
+		if valAny == nil || reflect.ValueOf(valAny).IsNil() {
 			return nil, ErrVersionDoesNotExist
 		}
+		val := valAny.([]byte)
 		if len(val) == 0 { // empty root
 			return nil, nil
 		}
 		return val, nil
 	}
+	val := valAny.([]byte)
 	if len(val) == 0 { // empty root
 		return nil, nil
 	}
@@ -926,18 +929,18 @@ func (ndb *nodeDB) GetRoot(version int64) ([]byte, error) {
 		switch n {
 		case nodeKeyFormat.Length(): // (prefix, version, 1)
 			nk := GetNodeKey(val[1:])
-			val, err = ndb.db.Get(val)
+			valAny, err = ndb.db.Get(val)
 			if err != nil {
 				return nil, err
 			}
-			if val == nil { // the prev version does not exist
+			if valAny == nil || reflect.ValueOf(valAny).IsNil() { // the prev version does not exist
 				// check if the prev version root is reformatted due to the pruning
 				rnk := &NodeKey{version: nk.version, nonce: 0}
-				val, err = ndb.db.Get(nodeKeyFormat.Key(rnk.GetKey()))
+				valAny, err = ndb.db.Get(nodeKeyFormat.Key(rnk.GetKey()))
 				if err != nil {
 					return nil, err
 				}
-				if val == nil {
+				if valAny == nil || reflect.ValueOf(valAny).IsNil() {
 					return nil, ErrVersionDoesNotExist
 				}
 				return rnk.GetKey(), nil
@@ -988,7 +991,7 @@ func (ndb *nodeDB) traverseRange(start []byte, end []byte, fn func(k, v []byte) 
 	defer itr.Close()
 
 	for ; itr.Valid(); itr.Next() {
-		if err := fn(itr.Key(), itr.Value()); err != nil {
+		if err := fn(itr.Key(), itr.Value().([]byte)); err != nil {
 			return err
 		}
 	}
@@ -1005,7 +1008,7 @@ func (ndb *nodeDB) traversePrefix(prefix []byte, fn func(k, v []byte) error) err
 	defer itr.Close()
 
 	for ; itr.Valid(); itr.Next() {
-		if err := fn(itr.Key(), itr.Value()); err != nil {
+		if err := fn(itr.Key(), itr.Value().([]byte)); err != nil {
 			return err
 		}
 	}

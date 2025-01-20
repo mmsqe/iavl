@@ -86,7 +86,7 @@ func (iter *FastIterator) Key() []byte {
 }
 
 // Value implements dbm.Iterator
-func (iter *FastIterator) Value() []byte {
+func (iter *FastIterator) Value() any {
 	if iter.valid {
 		return iter.nextFastNode.GetValue()
 	}
@@ -114,7 +114,7 @@ func (iter *FastIterator) Next() {
 
 	iter.valid = iter.valid && iter.fastIterator.Valid()
 	if iter.valid {
-		iter.nextFastNode, iter.err = fastnode.DeserializeNode(iter.fastIterator.Key()[1:], iter.fastIterator.Value())
+		iter.nextFastNode, iter.err = fastnode.DeserializeNode(iter.fastIterator.Key()[1:], iter.fastIterator.Value().([]byte))
 		iter.valid = iter.err == nil
 	}
 }

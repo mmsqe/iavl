@@ -243,7 +243,7 @@ func (mr *MockIteratorMockRecorder) Valid() *gomock.Call {
 }
 
 // Value mocks base method.
-func (m *MockIterator) Value() []byte {
+func (m *MockIterator) Value() any {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Value")
 	ret0, _ := ret[0].([]byte)

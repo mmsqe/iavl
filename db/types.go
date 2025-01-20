@@ -25,7 +25,7 @@ var (
 type DB interface {
 	// Get fetches the value of the given key, or nil if it does not exist.
 	// CONTRACT: key, value readonly []byte
-	Get([]byte) ([]byte, error)
+	Get([]byte) (any, error)
 
 	// Has checks if a key exists.
 	// CONTRACT: key, value readonly []byte

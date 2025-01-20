@@ -125,7 +125,7 @@ func (iter *UnsavedFastIterator) Key() []byte {
 }
 
 // Value implements store.Iterator
-func (iter *UnsavedFastIterator) Value() []byte {
+func (iter *UnsavedFastIterator) Value() any {
 	return iter.nextVal
 }
 
@@ -176,7 +176,7 @@ func (iter *UnsavedFastIterator) Next() {
 		}
 		// Disk node is next
 		iter.nextKey = iter.fastIterator.Key()
-		iter.nextVal = iter.fastIterator.Value()
+		iter.nextVal = iter.fastIterator.Value().([]byte)
 
 		iter.fastIterator.Next()
 		return
@@ -193,7 +193,7 @@ func (iter *UnsavedFastIterator) Next() {
 		}
 
 		iter.nextKey = iter.fastIterator.Key()
-		iter.nextVal = iter.fastIterator.Value()
+		iter.nextVal = iter.fastIterator.Value().([]byte)
 
 		iter.fastIterator.Next()
 		return

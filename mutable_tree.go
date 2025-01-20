@@ -230,7 +230,7 @@ func (tree *MutableTree) Iterate(fn func(key []byte, value []byte) bool) (stoppe
 	itr := NewUnsavedFastIterator(nil, nil, true, tree.ndb, tree.unsavedFastNodeAdditions, tree.unsavedFastNodeRemovals)
 	defer itr.Close()
 	for ; itr.Valid(); itr.Next() {
-		if fn(itr.Key(), itr.Value()) {
+		if fn(itr.Key(), itr.Value().([]byte)) {
 			return true, nil
 		}
 	}
@@ -597,7 +597,7 @@ func (tree *MutableTree) enableFastStorageAndCommit() error {
 	var upgradedFastNodes uint64
 	for ; itr.Valid(); itr.Next() {
 		upgradedFastNodes++
-		if err = tree.ndb.SaveFastNodeNoCache(fastnode.NewNode(itr.Key(), itr.Value(), tree.version)); err != nil {
+		if err = tree.ndb.SaveFastNodeNoCache(fastnode.NewNode(itr.Key(), itr.Value().([]byte), tree.version)); err != nil {
 			return err
 		}
 	}

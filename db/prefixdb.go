@@ -25,7 +25,7 @@ func NewPrefixDB(db corestore.KVStoreWithBatch, prefix []byte) *PrefixDB {
 }
 
 // Get implements corestore.KVStore.
-func (pdb *PrefixDB) Get(key []byte) ([]byte, error) {
+func (pdb *PrefixDB) Get(key []byte) (any, error) {
 	if len(key) == 0 {
 		return nil, errors.New("key is empty")
 	}
@@ -253,7 +253,7 @@ func (itr *prefixDBIterator) Key() []byte {
 }
 
 // Value implements Iterator.
-func (itr *prefixDBIterator) Value() []byte {
+func (itr *prefixDBIterator) Value() any {
 	itr.assertIsValid()
 	return itr.source.Value()
 }
