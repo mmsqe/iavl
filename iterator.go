@@ -28,7 +28,7 @@ type Iterator interface {
 
 	// Value returns the value at the current position. Panics if the iterator is invalid.
 	// CONTRACT: value readonly []byte
-	Value() (value []byte)
+	Value() (value any)
 
 	// Error returns the last error encountered by the iterator, if any.
 	Error() error
@@ -214,7 +214,7 @@ func (i *TreeIterator) Key() (key []byte) {
 	return i.key
 }
 
-func (i *TreeIterator) Value() (value []byte) {
+func (i *TreeIterator) Value() (value any) {
 	return i.value
 }
 
@@ -236,7 +236,7 @@ type LeafIterator struct {
 	valid   bool
 	err     error
 	key     []byte
-	value   []byte
+	value   any
 	metrics metrics.Proxy
 	itrIdx  int
 }
@@ -285,7 +285,7 @@ func (l *LeafIterator) Key() (key []byte) {
 	return l.key
 }
 
-func (l *LeafIterator) Value() (value []byte) {
+func (l *LeafIterator) Value() (value any) {
 	return l.value
 }
 

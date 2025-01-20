@@ -591,7 +591,7 @@ func (node *Node) Key() []byte {
 	return node.key
 }
 
-func (node *Node) Value() []byte {
+func (node *Node) Value() any {
 	return node.value
 }
 
