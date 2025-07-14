@@ -106,7 +106,7 @@ func newNodeDB(db dbm.DB, cacheSize int, opts Options, lg Logger) *nodeDB {
 		cancel:              cancel,
 		logger:              lg,
 		db:                  db,
-		batch:               NewBatchWithFlusher(db, opts.FlushThreshold),
+		batch:               NewBatchWithFlusher(db, opts.FlushThreshold, lg),
 		opts:                opts,
 		firstVersion:        0,
 		latestVersion:       0, // initially invalid

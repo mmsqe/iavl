@@ -1,6 +1,7 @@
 package iavl
 
 import (
+	"fmt"
 	"sync"
 
 	dbm "github.com/cosmos/iavl/db"
@@ -15,16 +16,19 @@ type BatchWithFlusher struct {
 	batch dbm.Batch // Batched writing buffer.
 
 	flushThreshold int // The threshold to flush the batch to disk.
+	ops            []string
+	logger         Logger
 }
 
 var _ dbm.Batch = (*BatchWithFlusher)(nil)
 
 // NewBatchWithFlusher returns new BatchWithFlusher wrapping the passed in batch
-func NewBatchWithFlusher(db dbm.DB, flushThreshold int) *BatchWithFlusher {
+func NewBatchWithFlusher(db dbm.DB, flushThreshold int, logger Logger) *BatchWithFlusher {
 	return &BatchWithFlusher{
 		db:             db,
 		batch:          db.NewBatchWithSize(flushThreshold),
 		flushThreshold: flushThreshold,
+		logger:         logger,
 	}
 }
 
@@ -63,7 +67,13 @@ func (b *BatchWithFlusher) Set(key, value []byte) error {
 		}
 		b.mtx.Lock()
 	}
-	return b.batch.Set(key, value)
+	err = b.batch.Set(key, value)
+	if err != nil {
+		return err
+	}
+
+	b.ops = append(b.ops, fmt.Sprintf("set %v", key))
+	return nil
 }
 
 // Delete delete value at the given key to the db.
@@ -85,19 +95,28 @@ func (b *BatchWithFlusher) Delete(key []byte) error {
 		}
 		b.mtx.Lock()
 	}
-	return b.batch.Delete(key)
+	err = b.batch.Delete(key)
+	if err != nil {
+		return err
+	}
+
+	b.ops = append(b.ops, fmt.Sprintf("del %v", key))
+	return nil
 }
 
 func (b *BatchWithFlusher) Write() error {
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
+	err := b.batch.Write()
+	b.logger.Info("Write", "ops", b.ops, "err", err)
 
-	if err := b.batch.Write(); err != nil {
+	if err != nil {
 		return err
 	}
 	if err := b.batch.Close(); err != nil {
 		return err
 	}
+	b.ops = nil
 	b.batch = b.db.NewBatchWithSize(b.flushThreshold)
 	return nil
 }
