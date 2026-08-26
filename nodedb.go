@@ -746,7 +746,9 @@ func (ndb *nodeDB) deleteVersionsTo(toVersion int64) error {
 	rootkeyCache := newRootkeyCache()
 	for version := first; version <= toVersion; version++ {
 		if err := ndb.deleteVersion(version, rootkeyCache); err != nil {
-			return err
+			// The pruner retries this version until it succeeds, so the log
+			// must say which one it is stuck on.
+			return fmt.Errorf("deleting version %d: %w", version, err)
 		}
 		ndb.resetFirstVersion(version + 1)
 	}
@@ -1213,6 +1215,12 @@ func (ndb *nodeDB) traverseOrphansWithRootkeyCache(cache *rootkeyCache, prevVers
 				curIter.Next(false)
 			}
 		}
+		// Once the current version cannot be read, shared subtrees can no
+		// longer be told from orphans: with orgNode nil every remaining node
+		// of the previous version would be deleted. Keep them instead.
+		if curIter.Error() != nil {
+			break
+		}
 		pNode := prevIter.GetNode()
 
 		if orgNode != nil && bytes.Equal(pNode.hash, orgNode.hash) {
@@ -1225,6 +1233,13 @@ func (ndb *nodeDB) traverseOrphansWithRootkeyCache(cache *rootkeyCache, prevVers
 			}
 			prevIter.Next(false)
 		}
+	}
+	// Orphans left behind only cost disk, so pruning goes on; but an
+	// unreadable node is the first sign of a damaged tree and must be seen.
+	if err := curIter.Error(); err != nil {
+		ndb.logger.Error("Error while pruning, tree is unreadable; orphans are kept", "version", prevVersion, "next", curVersion, "err", err)
+	} else if err := prevIter.Error(); err != nil {
+		ndb.logger.Error("Error while pruning, tree is unreadable; orphans are kept", "version", prevVersion, "next", curVersion, "err", err)
 	}
 
 	return nil
