@@ -12,17 +12,6 @@ import (
 	dbm "github.com/cosmos/iavl/db"
 )
 
-// recordingLogger keeps Error calls, so a test can check that pruning
-// reported what it could not read.
-type recordingLogger struct {
-	Logger
-	errors []string
-}
-
-func (l *recordingLogger) Error(msg string, keyVals ...any) {
-	l.errors = append(l.errors, fmt.Sprint(append([]any{msg}, keyVals...)...))
-}
-
 // unreadableDB fails to read one key, standing in for a storage error rather
 // than a node that is actually gone.
 type unreadableDB struct {
@@ -79,11 +68,13 @@ func reachableNodeKeys(t *testing.T, ndb *nodeDB, version int64) map[string]bool
 }
 
 // TestPruningKeepsLiveNodes: pruning must not delete a node a later version
-// still holds, however that node came to be unreadable, and must report it.
+// still holds, however that node came to be unreadable, and must fail rather
+// than skip the version -- startPruning retries, so a read that fails once
+// gets another go instead of leaking the orphans it never reached.
 // traverseOrphans tells shared subtrees from orphans by walking the newer
-// version; once that walk fails the two are indistinguishable, so it has to
-// stop deleting. The cases are the ways the walk can fail -- and the last one
-// needs no prior damage at all, which is what makes a storage hiccup enough.
+// version; once that walk fails the two are indistinguishable. The cases are
+// the ways it can fail, and the last needs no prior damage at all, which is
+// what makes a storage hiccup enough.
 func TestPruningKeepsLiveNodes(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -124,11 +115,13 @@ func TestPruningKeepsLiveNodes(t *testing.T) {
 				tree.ndb.nodeKey(root2Node.rightNodeKey), tree.ndb.nodeKey(root2Node.leftNodeKey))
 
 			// A fresh tree, so nothing is answered from the node cache.
-			logger := &recordingLogger{Logger: NewNopLogger()}
-			fresh := NewMutableTree(pruneDB, 0, true, logger)
+			fresh := NewMutableTree(pruneDB, 0, true, NewNopLogger())
 			_, err = fresh.LoadVersion(v3)
 			require.NoError(t, err)
-			require.NoError(t, fresh.DeleteVersionsTo(v1), "pruning must not stall")
+			err = fresh.DeleteVersionsTo(v1)
+			require.Error(t, err, "pruning read a broken node and must say so")
+			assert.Contains(t, err.Error(), fmt.Sprint("version ", v2),
+				"the error must name the version the pruner is stuck on")
 
 			lost := 0
 			for nk := range live {
@@ -142,11 +135,6 @@ func TestPruningKeepsLiveNodes(t *testing.T) {
 				}
 			}
 			assert.Zero(t, lost, "pruning deleted %d nodes that version %d still references", lost, v3)
-			// Also proves the prune reached the broken node: it could not have
-			// reported anything otherwise.
-			if assert.NotEmpty(t, logger.errors, "the unreadable node was not reported") {
-				assert.Contains(t, logger.errors[0], "Error while pruning")
-			}
 		})
 	}
 }
